@@ -1,40 +1,18 @@
 package bot
 
-import (
-	"fmt"
-	tbapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"log"
-)
+import "time"
 
-type TbAPI interface {
-	GetUpdatesChan(config tbapi.UpdateConfig) tbapi.UpdatesChannel
+type User struct {
+	ID          int64  `json:"id"`
+	Username    string `json:"user_name,omitempty"`
+	DisplayName string `json:"display_name,omitempty"`
 }
 
-type TelegramListener struct {
-	TbAPI TbAPI
-}
-
-func (tl *TelegramListener) Do() error {
-	u := tbapi.NewUpdate(0)
-	u.Timeout = 60
-
-	updates := tl.TbAPI.GetUpdatesChan(u)
-
-	for {
-		select {
-
-		case update, ok := <-updates:
-			if !ok {
-				return fmt.Errorf("telegram update chan closed")
-			}
-
-			if update.Message == nil {
-				continue
-			}
-
-			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
-		}
-	}
-
-	return nil
+type Message struct {
+	ID     int
+	From   User
+	ChatID int64
+	Sent   time.Time
+	HTML   string `json:",omitempty"`
+	Text   string `json:",omitempty"`
 }

@@ -4,14 +4,19 @@ import (
 	"fmt"
 	tbapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/golobby/dotenv"
+	"github.com/pkarpovich/tg-linkding/app/bot"
+	"github.com/pkarpovich/tg-linkding/app/events"
 	"log"
 	"os"
-	"tg-linkding/app/bot"
 )
 
 var config struct {
 	Telegram struct {
 		Token string `env:"TELEGRAM_TOKEN"`
+	}
+	Linkding struct {
+		Token string `env:"LINKDING_TOKEN"`
+		Url   string `env:"LINKDING_URL"`
 	}
 }
 
@@ -44,11 +49,14 @@ func prepareConfig() error {
 func execute() error {
 	tbAPI, err := tbapi.NewBotAPI(config.Telegram.Token)
 	if err != nil {
-		return fmt.Errorf("failed to create Telegram bot: %w", err)
+		return fmt.Errorf("failed to create Telegram events: %w", err)
 	}
 
-	tgListener := &bot.TelegramListener{
+	linkdingClient := bot.NewLinkdingClient(config.Linkding.Token, config.Linkding.Url)
+
+	tgListener := &events.TelegramListener{
 		TbAPI: tbAPI,
+		Bot:   linkdingClient,
 	}
 
 	if err := tgListener.Do(); err != nil {

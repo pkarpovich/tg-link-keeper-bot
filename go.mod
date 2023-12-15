@@ -1,4 +1,4 @@
-module tg-linkding
+module github.com/pkarpovich/tg-linkding
 
 go 1.21
 
