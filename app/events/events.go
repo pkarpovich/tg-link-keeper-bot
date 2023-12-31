@@ -14,7 +14,7 @@ const (
 )
 
 type Bot interface {
-	OnMessage(msg bot.Message) error
+	OnMessage(msg bot.Message) (bool, error)
 }
 
 type TbAPI interface {
@@ -79,7 +79,8 @@ func (tl *TelegramListener) processEvent(update tbapi.Update) error {
 	}
 
 	msg := tl.transform(update.Message)
-	if err := tl.Bot.OnMessage(msg); err != nil {
+	saved, err := tl.Bot.OnMessage(msg)
+	if err != nil {
 		errMsg := tbapi.NewMessage(update.Message.Chat.ID, "💥 Error: "+err.Error())
 		_, err := tl.TbAPI.Send(errMsg)
 		if err != nil {
@@ -89,8 +90,12 @@ func (tl *TelegramListener) processEvent(update tbapi.Update) error {
 		return errors.New(errMsg.Text)
 	}
 
+	if !saved {
+		return nil
+	}
+
 	resultMsg := tbapi.NewMessage(update.Message.Chat.ID, "💾 Saved!")
-	_, err := tl.TbAPI.Send(resultMsg)
+	_, err = tl.TbAPI.Send(resultMsg)
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}
@@ -106,6 +111,10 @@ func (tl *TelegramListener) transform(message *tbapi.Message) bot.Message {
 		HTML:   message.Text,
 		Text:   message.Text,
 		Sent:   message.Time(),
+	}
+
+	if message.Photo != nil && len(message.Caption) > 0 {
+		msg.Text = message.Caption
 	}
 
 	if message.ForwardFromChat != nil {

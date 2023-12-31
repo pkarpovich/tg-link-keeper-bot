@@ -39,14 +39,18 @@ func NewLinkStoreClient(url string) *Client {
 	}
 }
 
-func (lc *Client) OnMessage(msg bot.Message) error {
+func (lc *Client) OnMessage(msg bot.Message) (bool, error) {
 	content := prepareContent(msg)
-
-	if err := lc.saveLink(content); err != nil {
-		return fmt.Errorf("failed to save link: %w", err)
+	if content == nil {
+		log.Printf("[DEBUG] empty content")
+		return false, nil
 	}
 
-	return nil
+	if err := lc.saveLink(*content); err != nil {
+		return false, fmt.Errorf("failed to save link: %w", err)
+	}
+
+	return true, nil
 }
 
 func (lc *Client) saveLink(content Content) error {
@@ -118,9 +122,13 @@ func prepareRequestBody(content Content) (io.Reader, error) {
 	return bytes.NewBuffer(jsonValue), nil
 }
 
-func prepareContent(msg bot.Message) Content {
+func prepareContent(msg bot.Message) *Content {
+	if msg.Text == "" {
+		return nil
+	}
+
 	if _, err := url.ParseRequestURI(msg.Text); err == nil {
-		return Content{
+		return &Content{
 			Type:  LinkType,
 			Value: msg.Text,
 		}
@@ -129,13 +137,13 @@ func prepareContent(msg bot.Message) Content {
 	if msg.ForwardFromChat != nil {
 		forwardPostUrl := fmt.Sprintf("https://t.me/%s/%d", msg.ForwardFromChat.UserName, msg.ForwardFromMessageID)
 
-		return Content{
+		return &Content{
 			Type:  ForwardType,
 			Value: forwardPostUrl,
 		}
 	}
 
-	return Content{
+	return &Content{
 		Type:  TextType,
 		Value: msg.Text,
 	}
