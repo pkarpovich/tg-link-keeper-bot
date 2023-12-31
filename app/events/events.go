@@ -9,6 +9,10 @@ import (
 	"log"
 )
 
+const (
+	PingCommand = "ping"
+)
+
 type Bot interface {
 	OnMessage(msg bot.Message) error
 }
@@ -55,6 +59,12 @@ func (tl *TelegramListener) processEvent(update tbapi.Update) error {
 	}
 	log.Printf("[DEBUG] %s", string(msgJSON))
 
+	switch update.Message.Command() {
+	case PingCommand:
+		tl.handlePingCommand(update)
+		return nil
+	}
+
 	msg := tl.transform(update.Message)
 	if err := tl.Bot.OnMessage(msg); err != nil {
 		errMsg := tbapi.NewMessage(update.Message.Chat.ID, "💥 Error: "+err.Error())
@@ -95,4 +105,12 @@ func (tl *TelegramListener) transform(message *tbapi.Message) bot.Message {
 	}
 
 	return msg
+}
+
+func (tl *TelegramListener) handlePingCommand(update tbapi.Update) {
+	msg := tbapi.NewMessage(update.Message.Chat.ID, "🏓 Pong!")
+	_, err := tl.TbAPI.Send(msg)
+	if err != nil {
+		log.Printf("[ERROR] failed to send message: %v", err)
+	}
 }
