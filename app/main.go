@@ -4,8 +4,8 @@ import (
 	"fmt"
 	tbapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/golobby/dotenv"
-	"github.com/pkarpovich/tg-linkding/app/bot/linkstore"
-	"github.com/pkarpovich/tg-linkding/app/events"
+	"github.com/pkarpovich/tg-link-keeper-bot/app/bot/linkstore"
+	"github.com/pkarpovich/tg-link-keeper-bot/app/events"
 	"log"
 	"os"
 )

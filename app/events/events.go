@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	tbapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/pkarpovich/tg-linkding/app/bot"
+	"github.com/pkarpovich/tg-link-keeper-bot/app/bot"
 	"log"
 )
 

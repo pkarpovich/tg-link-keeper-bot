@@ -1,4 +1,4 @@
-module github.com/pkarpovich/tg-linkding
+module github.com/pkarpovich/tg-link-keeper-bot
 
 go 1.21
 
