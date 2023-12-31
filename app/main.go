@@ -4,7 +4,7 @@ import (
 	"fmt"
 	tbapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/golobby/dotenv"
-	"github.com/pkarpovich/tg-linkding/app/bot"
+	"github.com/pkarpovich/tg-linkding/app/bot/linkstore"
 	"github.com/pkarpovich/tg-linkding/app/events"
 	"log"
 	"os"
@@ -14,9 +14,8 @@ var config struct {
 	Telegram struct {
 		Token string `env:"TELEGRAM_TOKEN"`
 	}
-	Linkding struct {
-		Token string `env:"LINKDING_TOKEN"`
-		Url   string `env:"LINKDING_URL"`
+	LinkStore struct {
+		Url string `env:"LINK_STORE_URL"`
 	}
 }
 
@@ -52,7 +51,7 @@ func execute() error {
 		return fmt.Errorf("failed to create Telegram events: %w", err)
 	}
 
-	linkdingClient := bot.NewLinkdingClient(config.Linkding.Token, config.Linkding.Url)
+	linkdingClient := linkstore.NewLinkStoreClient(config.LinkStore.Url)
 
 	tgListener := &events.TelegramListener{
 		TbAPI: tbAPI,
