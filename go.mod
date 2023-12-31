@@ -13,5 +13,5 @@ replace github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1 => github.com/
 
 require (
 	github.com/pkg/errors v0.9.1 // indirect
-	golang.org/x/net v0.10.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
 )
