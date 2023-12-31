@@ -1,7 +1,7 @@
 services:
     bot:
         container_name: tg-link-keeper-bot
-        build: .
+        image: ghcr.io/pkarpovich/tg-link-keeper-bot:latest
         restart: unless-stopped
         environment:
             - TELEGRAM_SUPER_USERS=${TELEGRAM_SUPER_USERS}
