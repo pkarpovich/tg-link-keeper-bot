@@ -62,7 +62,7 @@ func (tl *TelegramListener) processEvent(update tbapi.Update) error {
 }
 
 func (tl *TelegramListener) transform(message *tbapi.Message) bot.Message {
-	return bot.Message{
+	msg := bot.Message{
 		ID:     message.MessageID,
 		From:   bot.User{},
 		ChatID: message.Chat.ID,
@@ -70,4 +70,15 @@ func (tl *TelegramListener) transform(message *tbapi.Message) bot.Message {
 		Text:   message.Text,
 		Sent:   message.Time(),
 	}
+
+	if message.ForwardFromChat != nil {
+		msg.ForwardFromMessageID = message.ForwardFromMessageID
+		msg.ForwardFromChat = &bot.Chat{
+			ID:       message.ForwardFromChat.ID,
+			Title:    message.ForwardFromChat.Title,
+			UserName: message.ForwardFromChat.UserName,
+		}
+	}
+
+	return msg
 }
