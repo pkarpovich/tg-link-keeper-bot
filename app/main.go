@@ -13,7 +13,8 @@ import (
 
 type Config struct {
 	Telegram struct {
-		Token string `env:"TELEGRAM_TOKEN"`
+		Token      string  `env:"TELEGRAM_TOKEN"`
+		SuperUsers []int64 `env:"TELEGRAM_SUPER_USERS" envSeparator:","`
 	}
 	LinkStore struct {
 		Url string `env:"LINK_STORE_URL"`
@@ -31,13 +32,6 @@ func main() {
 	if err := execute(config); err != nil {
 		log.Printf("[ERROR] %v", err)
 	}
-}
-
-func runningInDocker() bool {
-	if _, err := os.Stat("/.dockerenv"); err == nil {
-		return true
-	}
-	return false
 }
 
 func prepareConfig() (*Config, error) {
@@ -63,8 +57,9 @@ func execute(config *Config) error {
 	linkdingClient := linkstore.NewLinkStoreClient(config.LinkStore.Url)
 
 	tgListener := &events.TelegramListener{
-		TbAPI: tbAPI,
-		Bot:   linkdingClient,
+		SuperUsers: config.Telegram.SuperUsers,
+		TbAPI:      tbAPI,
+		Bot:        linkdingClient,
 	}
 
 	if err := tgListener.Do(); err != nil {

@@ -23,8 +23,9 @@ type TbAPI interface {
 }
 
 type TelegramListener struct {
-	TbAPI TbAPI
-	Bot   Bot
+	SuperUsers []int64
+	TbAPI      TbAPI
+	Bot        Bot
 }
 
 func (tl *TelegramListener) Do() error {
@@ -58,6 +59,18 @@ func (tl *TelegramListener) processEvent(update tbapi.Update) error {
 		return fmt.Errorf("failed to marshal update.Message to json: %w", errJSON)
 	}
 	log.Printf("[DEBUG] %s", string(msgJSON))
+
+	if !tl.isSuperUser(update.Message.From.ID) {
+		log.Printf("[DEBUG] user %d is not super user", update.Message.From.ID)
+
+		msg := tbapi.NewMessage(update.Message.Chat.ID, "I don't know you 🤷‍")
+		_, err := tl.TbAPI.Send(msg)
+		if err != nil {
+			return fmt.Errorf("failed to send message: %w", err)
+		}
+
+		return nil
+	}
 
 	switch update.Message.Command() {
 	case PingCommand:
@@ -113,4 +126,14 @@ func (tl *TelegramListener) handlePingCommand(update tbapi.Update) {
 	if err != nil {
 		log.Printf("[ERROR] failed to send message: %v", err)
 	}
+}
+
+func (tl *TelegramListener) isSuperUser(userID int64) bool {
+	for _, su := range tl.SuperUsers {
+		if su == userID {
+			return true
+		}
+	}
+
+	return false
 }

@@ -4,5 +4,6 @@ services:
         build: .
         restart: unless-stopped
         environment:
+            - TELEGRAM_SUPER_USERS=${TELEGRAM_SUPER_USERS}
             - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
             - LINK_STORE_URL=${LINK_STORE_URL}
