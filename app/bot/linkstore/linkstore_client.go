@@ -3,6 +3,7 @@ package linkstore
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/pkarpovich/tg-link-keeper-bot/app/bot"
 	"github.com/pkarpovich/tg-link-keeper-bot/app/bot/metadata"
@@ -25,6 +26,11 @@ const (
 type Content struct {
 	Type  string
 	Value string
+}
+
+type LinkStoreResponse struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 }
 
 func NewLinkStoreClient(url string) *Client {
@@ -69,6 +75,15 @@ func (lc *Client) saveLink(content Content) error {
 
 	bodyStr := string(body)
 	log.Printf("[DEBUG] save link response: %s", bodyStr)
+
+	var linkStoreResponse LinkStoreResponse
+	if err := json.Unmarshal(body, &linkStoreResponse); err != nil {
+		return fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	if linkStoreResponse.Code < 0 {
+		return errors.New(linkStoreResponse.Message)
+	}
 
 	return nil
 }

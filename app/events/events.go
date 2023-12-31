@@ -2,6 +2,7 @@ package events
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	tbapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkarpovich/tg-link-keeper-bot/app/bot"
@@ -14,6 +15,7 @@ type Bot interface {
 
 type TbAPI interface {
 	GetUpdatesChan(config tbapi.UpdateConfig) tbapi.UpdatesChannel
+	Send(c tbapi.Chattable) (tbapi.Message, error)
 }
 
 type TelegramListener struct {
@@ -40,7 +42,7 @@ func (tl *TelegramListener) Do() error {
 			}
 
 			if err := tl.processEvent(update); err != nil {
-				return fmt.Errorf("failed to process event: %w", err)
+				log.Printf("[ERROR] %v", err)
 			}
 		}
 	}
@@ -55,7 +57,19 @@ func (tl *TelegramListener) processEvent(update tbapi.Update) error {
 
 	msg := tl.transform(update.Message)
 	if err := tl.Bot.OnMessage(msg); err != nil {
-		return fmt.Errorf("failed to process message: %w", err)
+		errMsg := tbapi.NewMessage(update.Message.Chat.ID, "💥 Error: "+err.Error())
+		_, err := tl.TbAPI.Send(errMsg)
+		if err != nil {
+			return fmt.Errorf("failed to send error message: %w", err)
+		}
+
+		return errors.New(errMsg.Text)
+	}
+
+	resultMsg := tbapi.NewMessage(update.Message.Chat.ID, "💾 Saved!")
+	_, err := tl.TbAPI.Send(resultMsg)
+	if err != nil {
+		return fmt.Errorf("failed to send message: %w", err)
 	}
 
 	return nil

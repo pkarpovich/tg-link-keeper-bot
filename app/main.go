@@ -2,15 +2,16 @@ package main
 
 import (
 	"fmt"
+	"github.com/caarlos0/env/v10"
 	tbapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/golobby/dotenv"
+	"github.com/joho/godotenv"
 	"github.com/pkarpovich/tg-link-keeper-bot/app/bot/linkstore"
 	"github.com/pkarpovich/tg-link-keeper-bot/app/events"
 	"log"
 	"os"
 )
 
-var config struct {
+type Config struct {
 	Telegram struct {
 		Token string `env:"TELEGRAM_TOKEN"`
 	}
@@ -22,30 +23,38 @@ var config struct {
 func main() {
 	log.Printf("[INFO] starting app...")
 
-	if err := prepareConfig(); err != nil {
+	config, err := prepareConfig()
+	if err != nil {
 		log.Fatalf("[ERROR] %v", err)
 	}
 
-	if err := execute(); err != nil {
+	if err := execute(config); err != nil {
 		log.Printf("[ERROR] %v", err)
 	}
 }
 
-func prepareConfig() error {
-	file, err := os.Open(".env")
-	if err != nil {
-		return fmt.Errorf("failed to open .env file: %w", err)
+func runningInDocker() bool {
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return true
 	}
-
-	err = dotenv.NewDecoder(file).Decode(&config)
-	if err != nil {
-		return fmt.Errorf("failed to decode .env file: %w", err)
-	}
-
-	return nil
+	return false
 }
 
-func execute() error {
+func prepareConfig() (*Config, error) {
+	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
+		log.Fatalln("Error loading .env")
+	}
+
+	cfg := Config{}
+
+	if err := env.Parse(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse env: %w", err)
+	}
+
+	return &cfg, nil
+}
+
+func execute(config *Config) error {
 	tbAPI, err := tbapi.NewBotAPI(config.Telegram.Token)
 	if err != nil {
 		return fmt.Errorf("failed to create Telegram events: %w", err)
