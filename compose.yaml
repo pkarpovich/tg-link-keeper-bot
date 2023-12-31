@@ -1,0 +1,8 @@
+services:
+    bot:
+        container_name: tg-link-keeper-bot
+        build: .
+        restart: unless-stopped
+        environment:
+            - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+            - LINK_STORE_URL=${LINK_STORE_URL}
