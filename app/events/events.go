@@ -20,6 +20,7 @@ type Bot interface {
 type TbAPI interface {
 	GetUpdatesChan(config tbapi.UpdateConfig) tbapi.UpdatesChannel
 	Send(c tbapi.Chattable) (tbapi.Message, error)
+	Request(c tbapi.Chattable) (*tbapi.APIResponse, error)
 }
 
 type TelegramListener struct {
@@ -94,8 +95,23 @@ func (tl *TelegramListener) processEvent(update tbapi.Update) error {
 		return nil
 	}
 
-	resultMsg := tbapi.NewMessage(update.Message.Chat.ID, "💾 Saved!")
-	_, err = tl.TbAPI.Send(resultMsg)
+	reactionMsg := tbapi.SetMessageReactionConfig{
+		BaseChatMessage: tbapi.BaseChatMessage{
+			ChatConfig: tbapi.ChatConfig{
+				ChatID: update.Message.Chat.ID,
+			},
+			MessageID: update.Message.MessageID,
+		},
+		Reaction: []tbapi.ReactionType{
+			{
+				Type:  "emoji",
+				Emoji: "👍",
+			},
+		},
+		IsBig: false,
+	}
+
+	_, err = tl.TbAPI.Request(reactionMsg)
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}
@@ -117,12 +133,12 @@ func (tl *TelegramListener) transform(message *tbapi.Message) bot.Message {
 		msg.Text = message.Caption
 	}
 
-	if message.ForwardFromChat != nil {
-		msg.ForwardFromMessageID = message.ForwardFromMessageID
+	if message.ForwardOrigin != nil {
+		msg.ForwardFromMessageID = message.ForwardOrigin.MessageID
 		msg.ForwardFromChat = &bot.Chat{
-			ID:       message.ForwardFromChat.ID,
-			Title:    message.ForwardFromChat.Title,
-			UserName: message.ForwardFromChat.UserName,
+			ID:       message.ForwardOrigin.SenderChat.ID,
+			Title:    message.ForwardOrigin.SenderChat.Title,
+			UserName: message.ForwardOrigin.SenderChat.UserName,
 		}
 	}
 

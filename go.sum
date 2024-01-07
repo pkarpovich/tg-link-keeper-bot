@@ -1,5 +1,7 @@
 github.com/OvyFlash/telegram-bot-api/v5 v5.0.0-20231230151827-6d16deaa376e h1:55bczKHxcbPAEryw4ac2RgeWJF1b8YObJunfIBoIk9M=
 github.com/OvyFlash/telegram-bot-api/v5 v5.0.0-20231230151827-6d16deaa376e/go.mod h1:A2S0CWkNylc2phvKXWBBdD3K0iGnDBGbzRpISP2zBl8=
+github.com/OvyFlash/telegram-bot-api/v5 v5.0.0-20240107073727-a687eafa6883 h1:vLBHEZeXDL/2fE2CgfV/G/m/4o2RvlgNTz7cowhcfPg=
+github.com/OvyFlash/telegram-bot-api/v5 v5.0.0-20240107073727-a687eafa6883/go.mod h1:A2S0CWkNylc2phvKXWBBdD3K0iGnDBGbzRpISP2zBl8=
 github.com/caarlos0/env/v10 v10.0.0 h1:yIHUBZGsyqCnpTkbjk8asUlx6RFhhEs+h7TOBdgdzXA=
 github.com/caarlos0/env/v10 v10.0.0/go.mod h1:ZfulV76NvVPw3tm591U4SwL3Xx9ldzBP9aGxzeN7G18=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=

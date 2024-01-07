@@ -9,7 +9,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 )
 
-replace github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1 => github.com/OvyFlash/telegram-bot-api/v5 v5.0.0-20231230151827-6d16deaa376e
+replace github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1 => github.com/OvyFlash/telegram-bot-api/v5 v5.0.0-20240107073727-a687eafa6883
 
 require (
 	github.com/pkg/errors v0.9.1 // indirect
