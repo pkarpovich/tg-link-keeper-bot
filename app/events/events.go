@@ -133,7 +133,7 @@ func (tl *TelegramListener) transform(message *tbapi.Message) bot.Message {
 		msg.Text = message.Caption
 	}
 
-	if message.ForwardOrigin != nil {
+	if message.ForwardOrigin != nil && message.ForwardOrigin.SenderChat != nil {
 		msg.ForwardFromMessageID = message.ForwardOrigin.MessageID
 		msg.ForwardFromChat = &bot.Chat{
 			ID:       message.ForwardOrigin.SenderChat.ID,
