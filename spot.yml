@@ -13,4 +13,4 @@ task:
           cd ~/tg-link-keeper-bot
           docker compose down
           docker compose pull
-          docker compose -d --build
+          docker compose up -d --build
