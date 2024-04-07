@@ -8,14 +8,10 @@ import (
 	"github.com/pkarpovich/tg-link-keeper-bot/app/bot/linkstore"
 	"github.com/pkarpovich/tg-link-keeper-bot/app/events"
 	"log"
-	"net/http"
 	"os"
 )
 
 type Config struct {
-	Http struct {
-		Port int `env:"HTTP_PORT" envDefault:"8080"`
-	}
 	Telegram struct {
 		Token      string  `env:"TELEGRAM_TOKEN"`
 		SuperUsers []int64 `env:"TELEGRAM_SUPER_USERS" envSeparator:","`
@@ -33,7 +29,6 @@ func main() {
 		log.Fatalf("[ERROR] %v", err)
 	}
 
-	go startHealthCheckServer(config.Http.Port)
 	if err := execute(config); err != nil {
 		log.Printf("[ERROR] %v", err)
 	}
@@ -72,15 +67,4 @@ func execute(config *Config) error {
 	}
 
 	return nil
-}
-
-func startHealthCheckServer(port int) {
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "UP")
-	})
-
-	log.Printf("[INFO] starting health check server on port %d", port)
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
-		log.Fatalf("[ERROR] %v", err)
-	}
 }
