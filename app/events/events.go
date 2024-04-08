@@ -129,16 +129,26 @@ func (tl *TelegramListener) transform(message *tbapi.Message) bot.Message {
 		Sent:   message.Time(),
 	}
 
-	if message.Photo != nil && len(message.Caption) > 0 {
+	if len(message.Caption) > 0 {
 		msg.Text = message.Caption
 	}
 
-	if message.ForwardOrigin != nil && message.ForwardOrigin.SenderChat != nil {
-		msg.ForwardFromMessageID = message.ForwardOrigin.MessageID
-		msg.ForwardFromChat = &bot.Chat{
-			ID:       message.ForwardOrigin.SenderChat.ID,
-			Title:    message.ForwardOrigin.SenderChat.Title,
-			UserName: message.ForwardOrigin.SenderChat.UserName,
+	if message.ForwardOrigin != nil {
+		origin := message.ForwardOrigin
+
+		switch message.ForwardOrigin.Type {
+		case tbapi.MessageOriginChannel:
+			msg.Url = fmt.Sprintf("https://t.me/%s/%d", origin.Chat.UserName, origin.MessageID)
+		case tbapi.MessageOriginUser:
+			msg.Text = fmt.Sprintf(
+				"%s %s (%s):\n%s",
+				origin.SenderUser.FirstName,
+				origin.SenderUser.LastName,
+				origin.SenderUser.UserName,
+				message.Text,
+			)
+		case tbapi.MessageOriginHiddenUser:
+			msg.Text = fmt.Sprintf("%s:\n%s", origin.SenderUserName, message.Text)
 		}
 	}
 

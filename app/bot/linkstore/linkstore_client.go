@@ -134,12 +134,10 @@ func prepareContent(msg bot.Message) *Content {
 		}
 	}
 
-	if msg.ForwardFromChat != nil {
-		forwardPostUrl := fmt.Sprintf("https://t.me/%s/%d", msg.ForwardFromChat.UserName, msg.ForwardFromMessageID)
-
+	if len(msg.Url) > 0 {
 		return &Content{
 			Type:  ForwardType,
-			Value: forwardPostUrl,
+			Value: msg.Url,
 		}
 	}
 
