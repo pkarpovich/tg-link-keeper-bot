@@ -2,10 +2,10 @@ package events
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	tbapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkarpovich/tg-link-keeper-bot/app/bot"
+	"iter"
 	"log"
 )
 
@@ -14,7 +14,7 @@ const (
 )
 
 type Bot interface {
-	OnMessage(msg bot.Message) (bool, error)
+	OnMessage(msg bot.Message) iter.Seq[bot.Response]
 }
 
 type TbAPI interface {
@@ -26,7 +26,7 @@ type TbAPI interface {
 type TelegramListener struct {
 	SuperUsers []int64
 	TbAPI      TbAPI
-	Bot        Bot
+	Bot        bot.MultiBot
 }
 
 func (tl *TelegramListener) Do() error {
@@ -80,40 +80,38 @@ func (tl *TelegramListener) processEvent(update tbapi.Update) error {
 	}
 
 	msg := tl.transform(update.Message)
-	saved, err := tl.Bot.OnMessage(msg)
-	if err != nil {
-		errMsg := tbapi.NewMessage(update.Message.Chat.ID, "💥 Error: "+err.Error())
-		_, err := tl.TbAPI.Send(errMsg)
-		if err != nil {
-			return fmt.Errorf("failed to send error message: %w", err)
+
+	for resp := range tl.Bot.OnMessage(msg) {
+		if resp.Reaction != nil {
+			reactionMsg := tbapi.SetMessageReactionConfig{
+				BaseChatMessage: tbapi.BaseChatMessage{
+					ChatConfig: tbapi.ChatConfig{
+						ChatID: resp.ChatID,
+					},
+					MessageID: resp.Reaction.MessageID,
+				},
+				Reaction: []tbapi.ReactionType{
+					{
+						Type:  "emoji",
+						Emoji: resp.Reaction.Emoji,
+					},
+				},
+				IsBig: false,
+			}
+
+			_, err := tl.TbAPI.Request(reactionMsg)
+			if err != nil {
+				return fmt.Errorf("failed to send message: %w", err)
+			}
 		}
 
-		return errors.New(errMsg.Text)
-	}
-
-	if !saved {
-		return nil
-	}
-
-	reactionMsg := tbapi.SetMessageReactionConfig{
-		BaseChatMessage: tbapi.BaseChatMessage{
-			ChatConfig: tbapi.ChatConfig{
-				ChatID: update.Message.Chat.ID,
-			},
-			MessageID: update.Message.MessageID,
-		},
-		Reaction: []tbapi.ReactionType{
-			{
-				Type:  "emoji",
-				Emoji: "👍",
-			},
-		},
-		IsBig: false,
-	}
-
-	_, err = tl.TbAPI.Request(reactionMsg)
-	if err != nil {
-		return fmt.Errorf("failed to send message: %w", err)
+		if resp.Text != "" {
+			msg := tbapi.NewMessage(resp.ChatID, resp.Text)
+			_, err := tl.TbAPI.Send(msg)
+			if err != nil {
+				return fmt.Errorf("failed to send message: %w", err)
+			}
+		}
 	}
 
 	return nil

@@ -12,7 +12,8 @@ type Config struct {
 		SuperUsers []int64 `env:"TELEGRAM_SUPER_USERS" envSeparator:","`
 	}
 	LinkStore struct {
-		Url string `env:"LINK_STORE_URL"`
+		Url     string `env:"LINK_STORE_URL"`
+		DryMode bool   `env:"LINK_STORE_DRY_MODE" envDefault:"false"`
 	}
 }
 

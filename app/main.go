@@ -3,9 +3,10 @@ package main
 import (
 	"fmt"
 	tbapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/pkarpovich/tg-link-keeper-bot/app/bot/linkstore"
+	"github.com/pkarpovich/tg-link-keeper-bot/app/bot"
 	"github.com/pkarpovich/tg-link-keeper-bot/app/config"
 	"github.com/pkarpovich/tg-link-keeper-bot/app/events"
+	"github.com/pkarpovich/tg-link-keeper-bot/app/providers"
 	"log"
 )
 
@@ -28,12 +29,14 @@ func execute(config *config.Config) error {
 		return fmt.Errorf("failed to create Telegram events: %w", err)
 	}
 
-	linkdingClient := linkstore.NewLinkStoreClient(config.LinkStore.Url)
+	cubox := providers.NewCubox(config.LinkStore.Url, config.LinkStore.DryMode)
 
 	tgListener := &events.TelegramListener{
 		SuperUsers: config.Telegram.SuperUsers,
 		TbAPI:      tbAPI,
-		Bot:        linkdingClient,
+		Bot: bot.MultiBot{
+			bot.NewLinkstore(cubox),
+		},
 	}
 
 	if err := tgListener.Do(); err != nil {

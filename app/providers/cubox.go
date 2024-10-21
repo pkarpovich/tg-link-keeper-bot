@@ -1,20 +1,25 @@
-package linkstore
+package providers
 
 import (
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jimmysawczuk/recon"
 	"github.com/pkarpovich/tg-link-keeper-bot/app/bot"
-	"github.com/pkarpovich/tg-link-keeper-bot/app/bot/metadata"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 )
 
-type Client struct {
-	Url string
+type Cubox struct {
+	Url     string
+	DryMode bool
+}
+
+func NewCubox(url string, DryMode bool) *Cubox {
+	return &Cubox{Url: url, DryMode: DryMode}
 }
 
 const (
@@ -33,34 +38,19 @@ type LinkStoreResponse struct {
 	Message string `json:"message"`
 }
 
-func NewLinkStoreClient(url string) *Client {
-	return &Client{
-		Url: url,
-	}
-}
-
-func (lc *Client) OnMessage(msg bot.Message) (bool, error) {
-	content := prepareContent(msg)
-	if content == nil {
-		log.Printf("[DEBUG] empty content")
-		return false, nil
+func (c *Cubox) SaveLink(content Content) error {
+	if c.DryMode {
+		log.Printf("[DEBUG] dry mode enabled, skipping link save")
+		return nil
 	}
 
-	if err := lc.saveLink(*content); err != nil {
-		return false, fmt.Errorf("failed to save link: %w", err)
-	}
-
-	return true, nil
-}
-
-func (lc *Client) saveLink(content Content) error {
 	client := &http.Client{}
 	jsonBody, err := prepareRequestBody(content)
 	if err != nil {
 		return fmt.Errorf("failed to prepare request body: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", lc.Url, jsonBody)
+	req, err := http.NewRequest("POST", c.Url, jsonBody)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -70,7 +60,12 @@ func (lc *Client) saveLink(content Content) error {
 	if err != nil {
 		return fmt.Errorf("failed to send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.Printf("[ERROR] failed to close response body: %v", err)
+		}
+	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -103,7 +98,7 @@ func prepareRequestBody(content Content) (io.Reader, error) {
 	}
 
 	if content.Type == ForwardType || content.Type == LinkType {
-		urlMetadata, err := metadata.Prepare(content.Value)
+		urlMetadata, err := prepareLinkMetadata(content.Value)
 		if err != nil {
 			return nil, fmt.Errorf("failed to prepare link metadata: %w", err)
 		}
@@ -122,7 +117,7 @@ func prepareRequestBody(content Content) (io.Reader, error) {
 	return bytes.NewBuffer(jsonValue), nil
 }
 
-func prepareContent(msg bot.Message) *Content {
+func (c *Cubox) PrepareContent(msg bot.Message) *Content {
 	if msg.Text == "" {
 		return nil
 	}
@@ -145,4 +140,23 @@ func prepareContent(msg bot.Message) *Content {
 		Type:  TextType,
 		Value: msg.Text,
 	}
+}
+
+type LinkMetadata struct {
+	Title       string
+	Description string
+	Url         string
+}
+
+func prepareLinkMetadata(url string) (*LinkMetadata, error) {
+	res, err := recon.Parse(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse url: %w", err)
+	}
+
+	return &LinkMetadata{
+		Description: res.Description,
+		Title:       res.Title,
+		Url:         res.URL,
+	}, nil
 }
