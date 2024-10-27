@@ -7,10 +7,12 @@ import (
 	"github.com/pkarpovich/tg-link-keeper-bot/app/bot"
 	"iter"
 	"log"
+	"time"
 )
 
 const (
-	PingCommand = "ping"
+	TickerTimeout = 2 * time.Second
+	PingCommand   = "ping"
 )
 
 type Bot interface {
@@ -34,6 +36,8 @@ func (tl *TelegramListener) Do() error {
 	u.Timeout = 60
 
 	updates := tl.TbAPI.GetUpdatesChan(u)
+	batchMap := make(map[int64][]tbapi.Update)
+	ticker := time.NewTicker(TickerTimeout)
 
 	for {
 		select {
@@ -47,9 +51,42 @@ func (tl *TelegramListener) Do() error {
 				continue
 			}
 
-			if err := tl.processEvent(update); err != nil {
-				log.Printf("[ERROR] %v", err)
+			userID := update.Message.From.ID
+			if !tl.isSuperUser(userID) {
+				if err := tl.handleNonSuperUser(update); err != nil {
+					return err
+				}
+
+				return nil
 			}
+
+			switch update.Message.Command() {
+			case PingCommand:
+				return tl.handlePingCommand(update)
+			}
+
+			batchMap[userID] = append(batchMap[userID], update)
+		case <-ticker.C:
+			for userID, batch := range batchMap {
+				go tl.processBatch(batch)
+				delete(batchMap, userID)
+			}
+		}
+	}
+}
+
+func (tl *TelegramListener) processBatch(batch []tbapi.Update) {
+	if messagesBelongToSameMediaGroup(batch) {
+		if err := tl.processEvent(getMainMessageFromMediaGroup(batch)); err != nil {
+			log.Printf("[ERROR] %v", err)
+		}
+
+		return
+	}
+
+	for _, update := range batch {
+		if err := tl.processEvent(update); err != nil {
+			log.Printf("[ERROR] %v", err)
 		}
 	}
 }
@@ -61,27 +98,7 @@ func (tl *TelegramListener) processEvent(update tbapi.Update) error {
 	}
 	log.Printf("[DEBUG] %s", string(msgJSON))
 
-	if !tl.isSuperUser(update.Message.From.ID) {
-		log.Printf("[DEBUG] user %d is not super user", update.Message.From.ID)
-
-		msg := tbapi.NewMessage(update.Message.Chat.ID, "I don't know you 🤷‍")
-		_, err := tl.TbAPI.Send(msg)
-		if err != nil {
-			return fmt.Errorf("failed to send message: %w", err)
-		}
-
-		return nil
-	}
-
-	switch update.Message.Command() {
-	case PingCommand:
-		tl.handlePingCommand(update)
-		return nil
-	}
-
-	msg := tl.transform(update.Message)
-
-	for resp := range tl.Bot.OnMessage(msg) {
+	for resp := range tl.Bot.OnMessage(tl.transform(update.Message)) {
 		if resp.Reaction != nil {
 			reactionMsg := tbapi.SetMessageReactionConfig{
 				BaseChatMessage: tbapi.BaseChatMessage{
@@ -153,12 +170,26 @@ func (tl *TelegramListener) transform(message *tbapi.Message) bot.Message {
 	return msg
 }
 
-func (tl *TelegramListener) handlePingCommand(update tbapi.Update) {
+func (tl *TelegramListener) handlePingCommand(update tbapi.Update) error {
 	msg := tbapi.NewMessage(update.Message.Chat.ID, "🏓 Pong!")
 	_, err := tl.TbAPI.Send(msg)
 	if err != nil {
-		log.Printf("[ERROR] failed to send message: %v", err)
+		return fmt.Errorf("failed to send message: %w", err)
 	}
+
+	return nil
+}
+
+func (tl *TelegramListener) handleNonSuperUser(update tbapi.Update) error {
+	log.Printf("[DEBUG] user %d is not super user", update.Message.From.ID)
+
+	msg := tbapi.NewMessage(update.Message.Chat.ID, "I don't know you 🤷‍")
+	_, err := tl.TbAPI.Send(msg)
+	if err != nil {
+		return fmt.Errorf("failed to send message: %w", err)
+	}
+
+	return nil
 }
 
 func (tl *TelegramListener) isSuperUser(userID int64) bool {
@@ -169,4 +200,32 @@ func (tl *TelegramListener) isSuperUser(userID int64) bool {
 	}
 
 	return false
+}
+
+func messagesBelongToSameMediaGroup(updates []tbapi.Update) bool {
+	mediaGroupID := ""
+
+	for _, upd := range updates {
+		if mediaGroupID == "" {
+			mediaGroupID = upd.Message.MediaGroupID
+		}
+
+		if upd.Message.MediaGroupID != mediaGroupID {
+			return false
+		}
+	}
+
+	return true
+}
+
+func getMainMessageFromMediaGroup(updates []tbapi.Update) tbapi.Update {
+	var mainUpdate tbapi.Update
+
+	for _, upd := range updates {
+		if len(upd.Message.Photo) > 0 && len(upd.Message.Caption) > 0 {
+			mainUpdate = upd
+		}
+	}
+
+	return mainUpdate
 }

@@ -21,7 +21,7 @@ func (l *LinkStore) ShouldHandle(msg Message) bool {
 }
 
 func (l *LinkStore) OnMessage(msg Message) Response {
-	content := l.cubox.PrepareContent(msg)
+	content := l.cubox.PrepareContent(msg.Text, msg.Url)
 	if content == nil {
 		log.Printf("[DEBUG] empty content")
 		return Response{}

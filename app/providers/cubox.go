@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jimmysawczuk/recon"
-	"github.com/pkarpovich/tg-link-keeper-bot/app/bot"
 	"io"
 	"log"
 	"net/http"
@@ -39,15 +38,15 @@ type LinkStoreResponse struct {
 }
 
 func (c *Cubox) SaveLink(content Content) error {
-	if c.DryMode {
-		log.Printf("[DEBUG] dry mode enabled, skipping link save")
-		return nil
-	}
-
 	client := &http.Client{}
 	jsonBody, err := prepareRequestBody(content)
 	if err != nil {
 		return fmt.Errorf("failed to prepare request body: %w", err)
+	}
+
+	if c.DryMode {
+		log.Printf("[DEBUG] dry mode enabled, skipping link save")
+		return nil
 	}
 
 	req, err := http.NewRequest("POST", c.Url, jsonBody)
@@ -117,28 +116,28 @@ func prepareRequestBody(content Content) (io.Reader, error) {
 	return bytes.NewBuffer(jsonValue), nil
 }
 
-func (c *Cubox) PrepareContent(msg bot.Message) *Content {
-	if msg.Text == "" {
+func (c *Cubox) PrepareContent(text, msgUrl string) *Content {
+	if text == "" {
 		return nil
 	}
 
-	if _, err := url.ParseRequestURI(msg.Text); err == nil {
+	if _, err := url.ParseRequestURI(text); err == nil {
 		return &Content{
 			Type:  LinkType,
-			Value: msg.Text,
+			Value: text,
 		}
 	}
 
-	if len(msg.Url) > 0 {
+	if len(msgUrl) > 0 {
 		return &Content{
 			Type:  ForwardType,
-			Value: msg.Url,
+			Value: msgUrl,
 		}
 	}
 
 	return &Content{
 		Type:  TextType,
-		Value: msg.Text,
+		Value: text,
 	}
 }
 
@@ -148,8 +147,13 @@ type LinkMetadata struct {
 	Url         string
 }
 
-func prepareLinkMetadata(url string) (*LinkMetadata, error) {
-	res, err := recon.Parse(url)
+func prepareLinkMetadata(inputURL string) (*LinkMetadata, error) {
+	updatedUrl, err := replaceTwitterDomain(inputURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare url: %w", err)
+	}
+
+	res, err := recon.Parse(updatedUrl)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse url: %w", err)
 	}
@@ -159,4 +163,17 @@ func prepareLinkMetadata(url string) (*LinkMetadata, error) {
 		Title:       res.Title,
 		Url:         res.URL,
 	}, nil
+}
+
+func replaceTwitterDomain(inputURL string) (string, error) {
+	parsedUrl, err := url.Parse(inputURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse url: %w", err)
+	}
+
+	if parsedUrl.Host == "twitter.com" || parsedUrl.Host == "xxxx.com" {
+		parsedUrl.Host = "t.fixupx.com"
+	}
+
+	return parsedUrl.String(), nil
 }
