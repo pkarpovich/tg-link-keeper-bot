@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"errors"
 	"fmt"
 	"github.com/pkarpovich/tg-link-keeper-bot/app/providers"
 	"log"
@@ -28,6 +29,16 @@ func (l *LinkStore) OnMessage(msg Message) Response {
 	}
 
 	if err := l.cubox.SaveLink(*content); err != nil {
+		if errors.Is(err, providers.ErrDuplicatedLink) {
+			return Response{
+				Reaction: &ResponseReaction{
+					MessageID: msg.ID,
+					Emoji:     "👀",
+				},
+				ChatID: msg.ChatID,
+			}
+		}
+
 		return Response{
 			Text:   fmt.Sprintf("failed to save link: %v", err),
 			ChatID: msg.ChatID,
@@ -36,8 +47,8 @@ func (l *LinkStore) OnMessage(msg Message) Response {
 
 	return Response{
 		Reaction: &ResponseReaction{
-			Emoji:     "👍",
 			MessageID: msg.ID,
+			Emoji:     "👍",
 		},
 		ChatID: msg.ChatID,
 	}

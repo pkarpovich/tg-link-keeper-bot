@@ -203,8 +203,11 @@ func (tl *TelegramListener) isSuperUser(userID int64) bool {
 }
 
 func messagesBelongToSameMediaGroup(updates []tbapi.Update) bool {
-	mediaGroupID := ""
+	if len(updates) < 2 {
+		return false
+	}
 
+	mediaGroupID := ""
 	for _, upd := range updates {
 		if mediaGroupID == "" {
 			mediaGroupID = upd.Message.MediaGroupID

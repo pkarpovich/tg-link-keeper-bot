@@ -13,6 +13,7 @@ type Config struct {
 	}
 	LinkStore struct {
 		Url     string `env:"LINK_STORE_URL"`
+		Token   string `env:"LINK_STORE_TOKEN"`
 		DryMode bool   `env:"LINK_STORE_DRY_MODE" envDefault:"false"`
 	}
 }

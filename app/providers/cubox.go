@@ -14,11 +14,12 @@ import (
 
 type Cubox struct {
 	Url     string
+	Token   string
 	DryMode bool
 }
 
-func NewCubox(url string, DryMode bool) *Cubox {
-	return &Cubox{Url: url, DryMode: DryMode}
+func NewCubox(url, token string, DryMode bool) *Cubox {
+	return &Cubox{Url: url, Token: token, DryMode: DryMode}
 }
 
 const (
@@ -39,9 +40,9 @@ type LinkStoreResponse struct {
 
 func (c *Cubox) SaveLink(content Content) error {
 	client := &http.Client{}
-	jsonBody, err := prepareRequestBody(content)
+	jsonBody, err := c.prepareRequestBody(content)
 	if err != nil {
-		return fmt.Errorf("failed to prepare request body: %w", err)
+		return err
 	}
 
 	if c.DryMode {
@@ -86,7 +87,9 @@ func (c *Cubox) SaveLink(content Content) error {
 	return nil
 }
 
-func prepareRequestBody(content Content) (io.Reader, error) {
+var ErrDuplicatedLink = errors.New("link already saved")
+
+func (c *Cubox) prepareRequestBody(content Content) (io.Reader, error) {
 	values := map[string]string{
 		"content": content.Value,
 		"type":    "url",
@@ -101,6 +104,11 @@ func prepareRequestBody(content Content) (io.Reader, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to prepare link metadata: %w", err)
 		}
+
+		if c.checkForDuplicatedLink(urlMetadata.Title) {
+			return nil, ErrDuplicatedLink
+		}
+
 		log.Printf("[DEBUG] url metadata: %+v", urlMetadata)
 
 		values["description"] = urlMetadata.Description
@@ -141,6 +149,53 @@ func (c *Cubox) PrepareContent(text, msgUrl string) *Content {
 	}
 }
 
+type SearchResponse struct {
+	Items []struct {
+		Id  string `json:"userSearchEngineID"`
+		Url string `json:"targetURL"`
+	} `json:"data"`
+}
+
+func (c *Cubox) checkForDuplicatedLink(link string) bool {
+	httpClient := &http.Client{}
+
+	searchURL := buildSearchURL(link)
+	req, err := http.NewRequest("GET", searchURL, nil)
+	if err != nil {
+		log.Printf("[ERROR] failed to create request: %v", err)
+		return false
+	}
+	req.Header.Add("Authorization", c.Token)
+	bodyResp, err := httpClient.Do(req)
+	if err != nil {
+		log.Printf("[ERROR] failed to send request: %v", err)
+		return false
+	}
+	defer func() {
+		if err := bodyResp.Body.Close(); err != nil {
+			fmt.Printf("[ERROR] Error while closing response body: %v", err)
+		}
+	}()
+
+	var searchResp SearchResponse
+	body, err := io.ReadAll(bodyResp.Body)
+	if err != nil {
+		log.Printf("[ERROR] failed to read response body: %v", err)
+		return false
+	}
+
+	if err := json.Unmarshal(body, &searchResp); err != nil {
+		log.Printf("[ERROR] failed to unmarshal response: %v", err)
+		return false
+	}
+
+	if len(searchResp.Items) > 0 {
+		return true
+	}
+
+	return false
+}
+
 type LinkMetadata struct {
 	Title       string
 	Description string
@@ -163,6 +218,11 @@ func prepareLinkMetadata(inputURL string) (*LinkMetadata, error) {
 		Title:       res.Title,
 		Url:         res.URL,
 	}, nil
+}
+
+func buildSearchURL(query string) string {
+	encodedQuery := url.QueryEscape(query)
+	return fmt.Sprintf("https://cubox.cc/c/api/search?page=1&pageSize=50&keyword=%s&filters=&archiving=false", encodedQuery)
 }
 
 func replaceTwitterDomain(inputURL string) (string, error) {

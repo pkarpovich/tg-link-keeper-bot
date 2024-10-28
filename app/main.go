@@ -29,7 +29,7 @@ func execute(config *config.Config) error {
 		return fmt.Errorf("failed to create Telegram events: %w", err)
 	}
 
-	cubox := providers.NewCubox(config.LinkStore.Url, config.LinkStore.DryMode)
+	cubox := providers.NewCubox(config.LinkStore.Url, config.LinkStore.Token, config.LinkStore.DryMode)
 
 	tgListener := &events.TelegramListener{
 		SuperUsers: config.Telegram.SuperUsers,
